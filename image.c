@@ -28,7 +28,7 @@ typedef struct {
     Matrix algorithm;
     int startRow;
     int endRow;
-} ThreadData;
+} ConvoluteArgs;
 
 //Paramters: srcImage:  An Image struct populated with the image being convoluted
 //           x: The x coordinate of the pixel
@@ -58,13 +58,13 @@ uint8_t getPixelValue(Image* srcImage,int x,int y,int bit,Matrix algorithm){
     return result;
 }
 
-void* parallelConvolute(void* arg){
-    ThreadData* data = (ThreadData*)arg;
+void* parallelConvolute(void* arguments){
+    ConvoluteArgs* args = (ConvoluteArgs*)arguments;
     int row,pix,bit;
-    for (row=data->startRow;row<data->endRow;row++){
-        for (pix=0;pix<data->srcImage->width;pix++){
-            for (bit=0;bit<data->srcImage->bpp;bit++){
-                data->destImage->data[Index(pix,row,data->srcImage->width,bit,data->srcImage->bpp)] = getPixelValue(data->srcImage,pix,row,bit,data->algorithm);
+    for (row=args->startRow;row<args->endRow;row++){
+        for (pix=0;pix<args->srcImage->width;pix++){
+            for (bit=0;bit<args->srcImage->bpp;bit++){
+                args->destImage->data[Index(pix,row,args->srcImage->width,bit,args->srcImage->bpp)] = getPixelValue(args->srcImage,pix,row,bit,args->algorithm);
             }
         }
     }
@@ -132,21 +132,22 @@ int main(int argc, char** argv) {
     destImage.width = srcImage.width;
     destImage.data = malloc(sizeof(uint8_t) * destImage.width * destImage.bpp * destImage.height);
 
-    pthread_t threads[NUM_THREADS];
-    ThreadData threadData[NUM_THREADS];
+    pthread_t thread_handles[NUM_THREADS];
+    ConvoluteArgs convoluteArgs[NUM_THREADS];
     int rowsPerThread = srcImage.height / NUM_THREADS;
 
-    for (int i = 0; i < NUM_THREADS; i++) {
-        threadData[i].srcImage = &srcImage;
-        threadData[i].destImage = &destImage;
-        memcpy(threadData[i].algorithm, algorithms[type], sizeof(Matrix));
-        threadData[i].startRow = i * rowsPerThread;
-        threadData[i].endRow = (i == NUM_THREADS - 1) ? srcImage.height : (i + 1) * rowsPerThread;
-        pthread_create(&threads[i], NULL, &parallelConvolute, (void*)&threadData[i]);
+    int i,j;
+    for (i = 0; i < NUM_THREADS; i++) {
+        convoluteArgs[i].srcImage = &srcImage;
+        convoluteArgs[i].destImage = &destImage;
+        memcpy(convoluteArgs[i].algorithm, algorithms[type], sizeof(Matrix));
+        convoluteArgs[i].startRow = i * rowsPerThread;
+        convoluteArgs[i].endRow = (i == NUM_THREADS - 1) ? srcImage.height : (i + 1) * rowsPerThread;
+        pthread_create(&thread_handles[i], NULL, &parallelConvolute, (void*)&convoluteArgs[i]);
     }
 
-    for (int i = 0; i < NUM_THREADS; i++) {
-        pthread_join(threads[i], NULL);
+    for (j = 0; j < NUM_THREADS; j++) {
+        pthread_join(thread_handles[j], NULL);
     }
 
     stbi_write_png("output.png", destImage.width, destImage.height, destImage.bpp, destImage.data, destImage.bpp * destImage.width);
