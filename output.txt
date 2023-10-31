@@ -1,0 +1,11 @@
+Script started on Tue Oct 31 01:04:38 2023
+[deflores@r1n19 hw3]$ srun image pic1.jpg edge
+Took 7 seconds
+[deflores@r1n19 hw3]$ srun imagemp pic1.jpg edge
+Took 6 seconds
+[deflores@r1n19 hw3]$ ./image pic1.jpg edge
+Took 7 seconds
+[deflores@r1n19 hw3]$ exit
+exit
+
+Script done on Tue Oct 31 01:05:37 2023
